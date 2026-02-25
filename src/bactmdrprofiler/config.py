@@ -12,6 +12,7 @@ Strict mode triggers
 - YAML key: config_strict: true
 - Env var: SSUIS_CONFIG_STRICT=1
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -41,7 +42,9 @@ def _dataclass_allowed_fields(dc_cls: Any) -> set[str]:
     return {f.name for f in _dc.fields(dc_cls)}
 
 
-def _validate_and_filter(dc_cls: Any, raw: Any, prefix: str, unknown_paths: List[str]) -> Any:
+def _validate_and_filter(
+    dc_cls: Any, raw: Any, prefix: str, unknown_paths: List[str]
+) -> Any:
     if raw is None:
         raw = {}
     if isinstance(raw, dict):
@@ -57,15 +60,29 @@ def _validate_and_filter(dc_cls: Any, raw: Any, prefix: str, unknown_paths: List
                 continue
             tp = f.type
             if _is_dataclass_type(tp) and isinstance(v, dict):
-                filtered[k] = _validate_and_filter(tp, v, f"{prefix}.{k}" if prefix else k, unknown_paths)
+                filtered[k] = _validate_and_filter(
+                    tp, v, f"{prefix}.{k}" if prefix else k, unknown_paths
+                )
             else:
                 origin = get_origin(tp)
                 args = get_args(tp)
-                if origin in (list, List) and args and _is_dataclass_type(args[0]) and isinstance(v, list):
+                if (
+                    origin in (list, List)
+                    and args
+                    and _is_dataclass_type(args[0])
+                    and isinstance(v, list)
+                ):
                     out_list = []
                     for i, item in enumerate(v):
                         if isinstance(item, dict):
-                            out_list.append(_validate_and_filter(args[0], item, f"{prefix}.{k}[{i}]" if prefix else f"{k}[{i}]", unknown_paths))
+                            out_list.append(
+                                _validate_and_filter(
+                                    args[0],
+                                    item,
+                                    f"{prefix}.{k}[{i}]" if prefix else f"{k}[{i}]",
+                                    unknown_paths,
+                                )
+                            )
                         else:
                             out_list.append(item)
                     filtered[k] = out_list
@@ -78,6 +95,7 @@ def _validate_and_filter(dc_cls: Any, raw: Any, prefix: str, unknown_paths: List
 @dataclass
 class OntologySpec:
     """Maps antibiotic class names → column names in the input CSV."""
+
     classes: Dict[str, List[str]] = field(default_factory=dict)
     mdr_threshold: int = 3  # ≥ N classes resistant = MDR
 
@@ -89,7 +107,7 @@ class OntologySpec:
 @dataclass
 class CausalSpec:
     enabled: bool = True
-    algorithm: str = "pc"          # 'pc' or 'fci'
+    algorithm: str = "pc"  # 'pc' or 'fci'
     alpha: float = 0.05
     max_cond_set: int = 3
 
@@ -106,13 +124,13 @@ class HypergraphSpec:
 @dataclass
 class ProbabilisticSpec:
     enabled: bool = True
-    model: str = "bernoulli_by_class"    # for missing class calls
+    model: str = "bernoulli_by_class"  # for missing class calls
     n_mc: int = 5000
 
 
 @dataclass
 class GeneLayerSpec:
-    format: str = "auto"                # auto | wide | long
+    format: str = "auto"  # auto | wide | long
     feature_column: str | None = None
     value_column: str | None = None
 
@@ -120,7 +138,7 @@ class GeneLayerSpec:
 @dataclass
 class CompressionSpec:
     enabled: bool = True
-    redundancy_jaccard: float = 0.9     # drop patterns with >= this overlap and <= support
+    redundancy_jaccard: float = 0.9  # drop patterns with >= this overlap and <= support
     keep_top: int = 100
 
 
@@ -138,7 +156,7 @@ class Config:
     config_strict: bool = False
 
     input_csv: str = ""
-    gene_csv: str = ""                # optional: AMR gene presence/absence
+    gene_csv: str = ""  # optional: AMR gene presence/absence
     output_dir: str = "mdr_results"
     id_column: str = "Strain_ID"
 
@@ -164,7 +182,9 @@ class Config:
         raw = yaml.safe_load(Path(path).read_text()) or {}
 
         schema_in = str(raw.get("schema_version", "1.0"))
-        strict = bool(raw.get("config_strict", False)) or (os.environ.get("SSUIS_CONFIG_STRICT", "0") == "1")
+        strict = bool(raw.get("config_strict", False)) or (
+            os.environ.get("SSUIS_CONFIG_STRICT", "0") == "1"
+        )
         if schema_in not in SUPPORTED_SCHEMA_VERSIONS:
             msg = f"Unsupported schema_version={schema_in!r}. Supported: {sorted(SUPPORTED_SCHEMA_VERSIONS)}"
             if strict:
@@ -172,7 +192,9 @@ class Config:
             logger.warning(msg)
 
         unknown_paths: List[str] = []
-        filtered = _validate_and_filter(cls, raw, prefix="", unknown_paths=unknown_paths)
+        filtered = _validate_and_filter(
+            cls, raw, prefix="", unknown_paths=unknown_paths
+        )
 
         ont = OntologySpec(**(filtered.pop("ontology", {}) or {}))
         cau = CausalSpec(**(filtered.pop("causal", {}) or {}))
@@ -182,7 +204,16 @@ class Config:
         pb = ProbabilisticSpec(**(filtered.pop("probabilistic", {}) or {}))
         cp = CompressionSpec(**(filtered.pop("compression", {}) or {}))
 
-        cfg = cls(ontology=ont, causal=cau, hypergraph=hyp, network=net, gene_layer=gl, probabilistic=pb, compression=cp, **filtered)
+        cfg = cls(
+            ontology=ont,
+            causal=cau,
+            hypergraph=hyp,
+            network=net,
+            gene_layer=gl,
+            probabilistic=pb,
+            compression=cp,
+            **filtered,
+        )
 
         cfg._config_validation = {
             "schema_version_in": schema_in,
@@ -190,11 +221,16 @@ class Config:
             "supported_schema_versions": sorted(SUPPORTED_SCHEMA_VERSIONS),
             "unknown_keys": sorted(set(unknown_paths)),
             "strict": strict,
-            "status": "PASS" if (schema_in in SUPPORTED_SCHEMA_VERSIONS and not unknown_paths) else ("WARN" if not strict else "FAIL"),
+            "status": "PASS"
+            if (schema_in in SUPPORTED_SCHEMA_VERSIONS and not unknown_paths)
+            else ("WARN" if not strict else "FAIL"),
         }
 
         if unknown_paths:
-            msg = f"Unknown config keys ignored ({len(set(unknown_paths))}): {sorted(set(unknown_paths))[:20]}" + (" ..." if len(set(unknown_paths)) > 20 else "")
+            msg = (
+                f"Unknown config keys ignored ({len(set(unknown_paths))}): {sorted(set(unknown_paths))[:20]}"
+                + (" ..." if len(set(unknown_paths)) > 20 else "")
+            )
             if strict:
                 raise ValueError(msg)
             logger.warning(msg)
@@ -211,4 +247,6 @@ class Config:
                 return [ser(v) for v in o]
             return o
 
-        Path(path).write_text(yaml.dump(ser(self), default_flow_style=False, sort_keys=False))
+        Path(path).write_text(
+            yaml.dump(ser(self), default_flow_style=False, sort_keys=False)
+        )

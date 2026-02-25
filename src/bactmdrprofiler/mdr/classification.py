@@ -89,7 +89,9 @@ def build_class_matrix(
 
     _valid_rules = ("any", "all", "majority")
     if class_rule not in _valid_rules:
-        raise ValueError(f"class_rule must be one of {_valid_rules}, got {class_rule!r}")
+        raise ValueError(
+            f"class_rule must be one of {_valid_rules}, got {class_rule!r}"
+        )
 
     ph = _to_binary(pheno_df)
     out = pd.DataFrame(index=ph.index)
@@ -198,7 +200,12 @@ def bayesian_prevalence(
 ) -> Dict[str, float]:
     """Bayesian prevalence with Jeffrey's prior Beta(0.5,0.5)."""
     if total <= 0:
-        return {"Posterior_Mean": np.nan, "Posterior_Mode": np.nan, "CI_Lo": np.nan, "CI_Hi": np.nan}
+        return {
+            "Posterior_Mean": np.nan,
+            "Posterior_Mode": np.nan,
+            "CI_Lo": np.nan,
+            "CI_Hi": np.nan,
+        }
 
     pa = prior_a + positives
     pb = prior_b + (total - positives)
@@ -239,7 +246,9 @@ def prevalence_table(class_df: pd.DataFrame, credible: float = 0.95) -> pd.DataF
 def mdr_probability(class_df: pd.DataFrame, threshold: int = 3) -> pd.DataFrame:
     """Probabilistic MDR under missing class calls."""
     n_classes = int(class_df.shape[1])
-    p_class = class_df.mean(axis=0, skipna=True).astype(float).fillna(0.0).clip(0.0, 1.0)
+    p_class = (
+        class_df.mean(axis=0, skipna=True).astype(float).fillna(0.0).clip(0.0, 1.0)
+    )
 
     min_res = (class_df == 1).sum(axis=1, skipna=True).astype(int)
     missing_mask = class_df.isna()
