@@ -12,6 +12,7 @@ Novel contributions
     resistance using inclusion-exclusion on joint entropy (McGill 1954).
     Positive II = synergistic (pairwise misses it); negative = redundant.
 """
+
 from __future__ import annotations
 from collections import Counter
 from itertools import combinations
@@ -20,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 # ── hyperedge extraction ─────────────────────────────────────────────────
+
 
 def extract_hyperedges(
     class_df: pd.DataFrame,
@@ -39,13 +41,20 @@ def extract_hyperedges(
     for pat, cnt in counts.most_common():
         sup = cnt / n
         if sup >= min_support:
-            rows.append({"Hyperedge": ", ".join(sorted(pat)),
-                         "_set": pat, "Size": len(pat),
-                         "Count": cnt, "Support": round(sup, 4)})
+            rows.append(
+                {
+                    "Hyperedge": ", ".join(sorted(pat)),
+                    "_set": pat,
+                    "Size": len(pat),
+                    "Count": cnt,
+                    "Support": round(sup, 4),
+                }
+            )
     return pd.DataFrame(rows)
 
 
 # ── hypergraph centrality ────────────────────────────────────────────────
+
 
 def hypergraph_centrality(
     hedges_df: pd.DataFrame,
@@ -53,12 +62,19 @@ def hypergraph_centrality(
 ) -> pd.DataFrame:
     """Degree / weighted-degree / size-weighted centrality per drug class."""
     if not all_classes:
-        return pd.DataFrame(columns=[
-            "Class", "Degree", "Weighted_Degree", "Size_Weighted",
-            "Degree_Norm", "Weighted_Degree_Norm", "Size_Weighted_Norm",
-        ])
+        return pd.DataFrame(
+            columns=[
+                "Class",
+                "Degree",
+                "Weighted_Degree",
+                "Size_Weighted",
+                "Degree_Norm",
+                "Weighted_Degree_Norm",
+                "Size_Weighted_Norm",
+            ]
+        )
     deg = {c: 0 for c in all_classes}
-    wd  = {c: 0.0 for c in all_classes}
+    wd = {c: 0.0 for c in all_classes}
     swd = {c: 0.0 for c in all_classes}
     for _, r in hedges_df.iterrows():
         for m in r["_set"]:
@@ -66,17 +82,25 @@ def hypergraph_centrality(
                 deg[m] += 1
                 wd[m] += r["Support"]
                 swd[m] += r["Support"] * r["Size"]
-    rows = [{"Class": c, "Degree": deg[c],
-             "Weighted_Degree": round(wd[c], 4),
-             "Size_Weighted": round(swd[c], 4)} for c in all_classes]
+    rows = [
+        {
+            "Class": c,
+            "Degree": deg[c],
+            "Weighted_Degree": round(wd[c], 4),
+            "Size_Weighted": round(swd[c], 4),
+        }
+        for c in all_classes
+    ]
     df = pd.DataFrame(rows).sort_values("Size_Weighted", ascending=False)
     for col in ["Degree", "Weighted_Degree", "Size_Weighted"]:
         mx = df[col].max()
-        if mx > 0: df[f"{col}_Norm"] = (df[col] / mx).round(4)
+        if mx > 0:
+            df[f"{col}_Norm"] = (df[col] / mx).round(4)
     return df
 
 
 # ── interaction information ──────────────────────────────────────────────
+
 
 def _joint_H(cols: list[np.ndarray]) -> float:
     """Joint Shannon entropy (bits)."""
@@ -102,7 +126,8 @@ def interaction_information(
     for order in range(3, max_order + 1):
         for sub in combinations(features, order):
             joint_prev = (df[list(sub)].sum(axis=1) == order).mean()
-            if joint_prev < min_support: continue
+            if joint_prev < min_support:
+                continue
             cols = [df[f].values for f in sub]
             n = len(sub)
             ii = 0.0
@@ -110,10 +135,20 @@ def interaction_information(
                 sign = (-1) ** (n - sz)
                 for idx in combinations(range(n), sz):
                     ii += sign * _joint_H([cols[i] for i in idx])
-            typ = "synergistic" if ii > 0.01 else ("redundant" if ii < -0.01 else "independent")
-            rows.append({"Features": ", ".join(sub), "Order": order,
-                         "II": round(ii, 4), "Type": typ,
-                         "Joint_Prevalence": round(joint_prev, 4)})
+            typ = (
+                "synergistic"
+                if ii > 0.01
+                else ("redundant" if ii < -0.01 else "independent")
+            )
+            rows.append(
+                {
+                    "Features": ", ".join(sub),
+                    "Order": order,
+                    "II": round(ii, 4),
+                    "Type": typ,
+                    "Joint_Prevalence": round(joint_prev, 4),
+                }
+            )
     result = pd.DataFrame(rows)
     if not result.empty:
         result = result.sort_values("II", key=abs, ascending=False)

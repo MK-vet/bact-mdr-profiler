@@ -40,7 +40,9 @@ def _(mo):
 @app.cell
 def _(mo):
     data_root = mo.ui.text(value=str(Path.cwd()), label="Data root")
-    out_root = mo.ui.text(value=str(Path.cwd() / "bactmdrprofiler_out"), label="Output directory")
+    out_root = mo.ui.text(
+        value=str(Path.cwd() / "bactmdrprofiler_out"), label="Output directory"
+    )
 
     mic = mo.ui.text(value="MIC.csv", label="MIC CSV")
     amr = mo.ui.text(value="AMR_genes.csv", label="AMR genes CSV")
@@ -61,11 +63,34 @@ def _(mo):
             mo.hstack([config_strict, schema_version]),
         ]
     )
-    return alpha, amr, config_strict, data_root, mdr_thr, mic, min_classes, out_root, schema_version
+    return (
+        alpha,
+        amr,
+        config_strict,
+        data_root,
+        mdr_thr,
+        mic,
+        min_classes,
+        out_root,
+        schema_version,
+    )
 
 
 @app.cell
-def _(Path, mo, yaml, alpha, amr, config_strict, data_root, mdr_thr, mic, min_classes, out_root, schema_version):
+def _(
+    Path,
+    mo,
+    yaml,
+    alpha,
+    amr,
+    config_strict,
+    data_root,
+    mdr_thr,
+    mic,
+    min_classes,
+    out_root,
+    schema_version,
+):
     def _abs(p: str) -> str:
         p = p.strip()
         pp = Path(p)
@@ -84,7 +109,11 @@ def _(Path, mo, yaml, alpha, amr, config_strict, data_root, mdr_thr, mic, min_cl
         "fdr_alpha": float(alpha.value),
         "reliability": {"enabled": True, "fail_fast": False},
     }
-    editor = mo.ui.text_area(value=yaml.safe_dump(cfg, sort_keys=False), label="Config YAML (editable)", rows=18)
+    editor = mo.ui.text_area(
+        value=yaml.safe_dump(cfg, sort_keys=False),
+        label="Config YAML (editable)",
+        rows=18,
+    )
     mo.md("## Config editor")
     editor
     return editor
@@ -107,9 +136,19 @@ def _(Path, json, mo, subprocess, sys, time, editor, out_root):
         cfg_path.write_text(editor.value, encoding="utf-8")
         cmd = [sys.executable, "-m", "bactmdrprofiler.cli", "--config", str(cfg_path)]
         with open(log_path, "ab") as f:
-            proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=str(out_dir))
+            proc = subprocess.Popen(
+                cmd, stdout=f, stderr=subprocess.STDOUT, cwd=str(out_dir)
+            )
         state_path.write_text(
-            json.dumps({"pid": proc.pid, "cmd": cmd, "started_at": time.time(), "cwd": str(out_dir)}, indent=2),
+            json.dumps(
+                {
+                    "pid": proc.pid,
+                    "cmd": cmd,
+                    "started_at": time.time(),
+                    "cwd": str(out_dir),
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
     return cfg_path, log_path, refresh, state_path
@@ -136,9 +175,15 @@ def _(Path, mo, pd, out_root):
     out_dir = Path(out_root.value)
     pattern = mo.ui.text(value="*.csv", label="File glob")
     limit = mo.ui.number(value=200, label="Preview rows", step=50)
-    label_map = mo.ui.text_area(value="{}", label="Label map (JSON) — applied to displayed tables", rows=4)
+    label_map = mo.ui.text_area(
+        value="{}", label="Label map (JSON) — applied to displayed tables", rows=4
+    )
     mo.vstack([mo.hstack([pattern, limit]), label_map])
-    files = sorted([p for p in out_dir.rglob(pattern.value) if p.is_file()]) if out_dir.exists() else []
+    files = (
+        sorted([p for p in out_dir.rglob(pattern.value) if p.is_file()])
+        if out_dir.exists()
+        else []
+    )
     if not files:
         mo.md("No files yet.")
         return
@@ -155,7 +200,9 @@ def _(Path, mo, pd, out_root):
         try:
             mapping = __import__("json").loads(label_map.value or "{}")
             if isinstance(mapping, dict) and mapping:
-                df = df.rename(columns={k: v for k, v in mapping.items() if k in df.columns})
+                df = df.rename(
+                    columns={k: v for k, v in mapping.items() if k in df.columns}
+                )
                 for c in df.columns:
                     if df[c].dtype == object:
                         df[c] = df[c].replace(mapping)
@@ -183,9 +230,13 @@ def _(Path, mo, out_root, pd):
 
     # Expected columns: Class, posterior_mean, ci_low, ci_high (names may vary)
     cls = "Class" if "Class" in df.columns else df.columns[0]
-    mean = "posterior_mean" if "posterior_mean" in df.columns else ("mean" if "mean" in df.columns else None)
-    lo = "ci_low" if "ci_low" in df.columns else None
-    hi = "ci_high" if "ci_high" in df.columns else None
+    mean = (
+        "posterior_mean"
+        if "posterior_mean" in df.columns
+        else ("mean" if "mean" in df.columns else None)
+    )
+    _lo = "ci_low" if "ci_low" in df.columns else None  # noqa: F841
+    _hi = "ci_high" if "ci_high" in df.columns else None  # noqa: F841
     if mean is None:
         mo.md("Could not infer posterior mean column.")
         return
@@ -207,17 +258,61 @@ def _(Path, mo, out_root, pd):
 def _(mo):
     mo.md("## Output reference")
     artifacts = [
-        {"file": "ontology_mapping_report.csv/json", "meaning": "How MDR classes mapped to MIC columns.", "interpretation": "If mapping is empty/low, fix ontology or MIC column names."},
-        {"file": "mdr_spectrum.csv", "meaning": "Per-isolate #classes and MDR/XDR/PDR labels.", "interpretation": "Verify that class counts match expectations from MIC calls."},
-        {"file": "mdr_probability.csv", "meaning": "Probabilistic MDR outputs (if enabled).", "interpretation": "Use as uncertainty-aware summary, not ground truth."},
-        {"file": "prevalence.csv", "meaning": "Bayesian prevalence per class.", "interpretation": "Use posterior mean + CrI; compare classes across cohorts."},
-        {"file": "network_edges.csv", "meaning": "Edges among genes/phenotypes.", "interpretation": "Association graph; tune thresholds and compare to phylogeny."},
-        {"file": "motifs.csv", "meaning": "Repeated local patterns.", "interpretation": "Highlights recurring co-resistance/marker motifs."},
-        {"file": "hyperedges.csv", "meaning": "Frequent multi-feature co-occurrence patterns.", "interpretation": "Use for MDR signatures and cluster-defining sets."},
-        {"file": "hypergraph_centrality.csv", "meaning": "Central features in the hypergraph.", "interpretation": "Candidate hubs/diagnostic markers."},
-        {"file": "interaction_information.csv", "meaning": "Synergy/redundancy of feature triplets.", "interpretation": "Synergy suggests combinatorial signals; control for prevalence."},
-        {"file": "config_validation.json", "meaning": "Config schema + unknown-key report.", "interpretation": "Fix config if strict mode fails."},
-        {"file": "run_manifest.json", "meaning": "Input hashes + environment.", "interpretation": "Reproducibility."},
+        {
+            "file": "ontology_mapping_report.csv/json",
+            "meaning": "How MDR classes mapped to MIC columns.",
+            "interpretation": "If mapping is empty/low, fix ontology or MIC column names.",
+        },
+        {
+            "file": "mdr_spectrum.csv",
+            "meaning": "Per-isolate #classes and MDR/XDR/PDR labels.",
+            "interpretation": "Verify that class counts match expectations from MIC calls.",
+        },
+        {
+            "file": "mdr_probability.csv",
+            "meaning": "Probabilistic MDR outputs (if enabled).",
+            "interpretation": "Use as uncertainty-aware summary, not ground truth.",
+        },
+        {
+            "file": "prevalence.csv",
+            "meaning": "Bayesian prevalence per class.",
+            "interpretation": "Use posterior mean + CrI; compare classes across cohorts.",
+        },
+        {
+            "file": "network_edges.csv",
+            "meaning": "Edges among genes/phenotypes.",
+            "interpretation": "Association graph; tune thresholds and compare to phylogeny.",
+        },
+        {
+            "file": "motifs.csv",
+            "meaning": "Repeated local patterns.",
+            "interpretation": "Highlights recurring co-resistance/marker motifs.",
+        },
+        {
+            "file": "hyperedges.csv",
+            "meaning": "Frequent multi-feature co-occurrence patterns.",
+            "interpretation": "Use for MDR signatures and cluster-defining sets.",
+        },
+        {
+            "file": "hypergraph_centrality.csv",
+            "meaning": "Central features in the hypergraph.",
+            "interpretation": "Candidate hubs/diagnostic markers.",
+        },
+        {
+            "file": "interaction_information.csv",
+            "meaning": "Synergy/redundancy of feature triplets.",
+            "interpretation": "Synergy suggests combinatorial signals; control for prevalence.",
+        },
+        {
+            "file": "config_validation.json",
+            "meaning": "Config schema + unknown-key report.",
+            "interpretation": "Fix config if strict mode fails.",
+        },
+        {
+            "file": "run_manifest.json",
+            "meaning": "Input hashes + environment.",
+            "interpretation": "Reproducibility.",
+        },
     ]
     mo.ui.table(artifacts, pagination=True, label="Artifacts")
 
