@@ -1,0 +1,49 @@
+# TEMPLATE — edit paths before use.
+# Replace /mnt/data/ with the actual directory containing your CSV files.
+# Example: path: /home/user/project/data/MIC.csv
+input_csv: /mnt/data/MIC.csv
+gene_csv: /mnt/data/AMR_genes.csv
+output_dir: /mnt/data/ssuis_prod_strict_validation/mdr
+id_column: Strain_ID
+ontology:
+  classes:
+    Beta_lactams:
+    - PEN
+    - AMP
+    - AMX
+    - AMC
+    Cephalosporins:
+    - CTX
+    Tetracyclines:
+    - TET
+    - DOX
+    Macrolides:
+    - ERY
+    Lincosamides:
+    - CLI
+    Aminoglycosides:
+    - GEN
+    Amphenicols:
+    - FFC
+    Sulfonamides:
+    - SXT
+    Oxazolidinones:
+    - LZD
+  mdr_threshold: 3
+causal:
+  enabled: false
+hypergraph:
+  enabled: true
+  min_pattern: 2
+  max_pattern: 5
+  min_support: 0.05
+  max_interaction_order: 3
+network:
+  alpha: 0.05
+  fdr_method: fdr_bh
+  motif_sizes:
+  - 3
+n_bootstrap: 100
+confidence: 0.95
+n_jobs: 1
+seed: 42

@@ -1,0 +1,12 @@
+{
+    "tool": "bact-mdr-profiler",
+    "version": "1.0.0",
+    "novelty_axis": "PC-algorithm causal discovery adapted for binary AMR co-resistance + hypergraph MDR classification",
+    "scope_boundary": "No clustering fusion; no phylogenetic models; no multi-layer network information theory",
+    "methodological_uniqueness": "CMH test conditioning in PC skeleton for binary resistance data; hyperedge extraction; interaction information for drug class synergy",
+    "softwarex_positioning": {
+        "primary_user_story": "MDR/XDR/PDR classification under missingness with hypergraph pattern analysis",
+        "reusable_beyond_strepsuis": true,
+        "domain_adaptation_via_gui_and_config": true
+    }
+}

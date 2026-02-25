@@ -1,0 +1,46 @@
+# TEMPLATE — edit paths before use.
+# Replace /mnt/data/ with the actual directory containing your CSV files.
+# Example: path: /home/user/project/data/MIC.csv
+# Real-data config (schema_version 1.1)
+schema_version: "1.1"
+
+input_csv: /mnt/data/MIC.csv
+gene_csv: /mnt/data/AMR_genes.csv
+output_dir: /mnt/data/ssuis_smoke_out/mdr
+id_column: Strain_ID
+
+# Hard gate: fail if ontology matches too few classes (prevents silent degeneracy)
+min_classes_matched: 1
+
+ontology:
+  classes:
+    Beta_lactams: [Penicillin, Ampicillin, Amoxicillin_Clavulanic_acid]
+    Cephalosporins: [Ceftiofur]
+    Tetracyclines: [Doxycycline, Oxytetracycline]
+    Fluoroquinolones: [Enrofloxacin]
+    Macrolides: [Tulathromycin]
+    Aminoglycosides: [Gentamicin, Spectinomycin]
+    Amphenicols: [Florfenicol]
+    Pleuromutilins: [Tiamulin]
+    Sulfonamides: [Trimethoprim_Sulphamethoxazole]
+  mdr_threshold: 3
+
+causal:
+  enabled: false
+
+hypergraph:
+  enabled: true
+  min_pattern: 2
+  max_pattern: 5
+  min_support: 0.05
+  max_interaction_order: 3
+
+network:
+  alpha: 0.05
+  fdr_method: fdr_bh
+  motif_sizes: [3]
+
+n_bootstrap: 100
+confidence: 0.95
+n_jobs: 1
+seed: 42
